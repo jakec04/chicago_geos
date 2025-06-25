@@ -66,10 +66,10 @@ L.tileLayer('https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=suJ4vITHr
 }).addTo(map);
 
 const colorBins = [
-  { label: '0–2%', color: '#feedde', min: 0, max: 2 },
-  { label: '3–5%', color: '#fdbe85', min: 3, max: 5 },
-  { label: '6–10%', color: '#fd8d3c', min: 6, max: 10 },
-  { label: '11–15%', color: '#e6550d', min: 11, max: 15 },
+  { label: '0–2%', color: '#feedde', min: 0, max: 2.99 },
+  { label: '3–5%', color: '#fdbe85', min: 3, max: 5.99 },
+  { label: '6–10%', color: '#fd8d3c', min: 6, max: 10.99 },
+  { label: '11–15%', color: '#e6550d', min: 11, max: 15.99 },
   { label: '16%+', color: '#a63603', min: 16, max: Infinity }
 ];
 
@@ -96,7 +96,6 @@ function renderChoropleth() {
     filter: feature => {
       let p = feature.properties.percent;
       if (typeof p === 'string') p = parseFloat(p.replace('%', ''));
-      if (typeof p !== 'number' || isNaN(p)) return false;
       const label = getColorBinLabel(p);
       return label && activeBins.has(label);
     },
@@ -198,5 +197,6 @@ fetch('https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95b
     map.addControl(searchControl);
   });
 </script>
+
 </body>
 </html>
