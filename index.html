@@ -62,11 +62,11 @@ L.tileLayer('https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=suJ4vITHr
 }).addTo(map);
 
 function getColor(p) {
-  return p > 20 ? '#e94c21' :
-         p > 15 ? '#ef5a28' :
-         p > 10 ? '#f68d5c' :
-         p > 5  ? '#fbbca1' :
-         p > 2  ? '#fde5d9' :
+  return p > 21 ? '#a63603' :
+         p > 16 ? '#e6550d' :
+         p > 11 ? '#fd8d3c' :
+         p > 6  ? '#fdbe85' :
+         p > 2  ? '#feedde' :
                   '#ffffff';
 }
 
@@ -74,16 +74,15 @@ function addLegend() {
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = function () {
     const div = L.DomUtil.create('div', 'info legend');
-    const grades = [0, 2, 5, 10, 15, 20];
-    const labels = ['#fde5d9','#fbbca1','#f68d5c','#ef5a28','#e94c21'];
+    const grades = [0, 2, 6, 11, 16, 21];
+    const labels = ['#feedde', '#fdbe85', '#fd8d3c', '#e6550d', '#a63603'];
     div.innerHTML = '<b>Percentage</b><br>';
-    for (let i = 0; i < grades.length - 1; i++) {
+    for (let i = 0; i < labels.length; i++) {
       div.innerHTML +=
         '<span style="background:' + labels[i] + 
         '; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></span> ' +
-        grades[i] + '&ndash;' + grades[i+1] + '%<br>';
+        grades[i] + (grades[i+1] ? '&ndash;' + (grades[i+1] - 1) + '%<br>' : '+%<br>');
     }
-    div.innerHTML += '<span style="background:#e94c21; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></span> 21%+<br>';
     div.style.backgroundColor = 'white';
     div.style.padding = '6px 8px';
     div.style.fontSize = '12px';
@@ -158,7 +157,8 @@ fetch('https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95b
       propertyName: 'searchLabel',
       marker: false,
       collapsed: false,
-      initial: false
+      initial: false,
+      textPlaceholder: 'How Gay is your Neighborhood?'
     });
 
     searchControl.on('search:locationfound', function(e) {
