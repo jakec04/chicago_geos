@@ -31,16 +31,17 @@
       border-top: 1px solid #ccc;
       text-align: left;
     }
-   .leaflet-control-search {
-  max-width: 300px;
-  width: 300px !important;
+ .leaflet-control-search {
+  width: auto !important;
+  max-width: none !important;
 }
 
-.leaflet-control-search input {
-  width: 100% !important;
+.leaflet-control-search .search-input {
+  min-width: 240px;
+  max-width: 300px;
+  padding-right: 28px;
   font-size: 13px;
-  padding-right: 24px; /* space for search icon */
-  box-sizing: border-box;
+  line-height: 18px;
 }
   </style>
 </head>
