@@ -31,18 +31,20 @@
       border-top: 1px solid #ccc;
       text-align: left;
     }
- .leaflet-control-search {
-  width: auto !important;
-  max-width: none !important;
-}
-
-.leaflet-control-search .search-input {
-  min-width: 240px;
-  max-width: 300px;
-  padding-right: 28px;
-  font-size: 13px;
-  line-height: 18px;
-}
+    .leaflet-control-search .search-input {
+      min-width: 240px;
+      max-width: 300px;
+      padding-right: 28px;
+      font-size: 13px;
+      line-height: 18px;
+    }
+    .leaflet-control-search {
+      width: auto !important;
+      max-width: none !important;
+    }
+    .info.legend {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -78,6 +80,8 @@ function getColor(p) {
                   '#ffffff';
 }
 
+let choroplethLayer;
+
 function addLegend() {
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = function () {
@@ -91,11 +95,22 @@ function addLegend() {
         '; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></span> ' +
         grades[i] + (grades[i+1] ? '&ndash;' + (grades[i+1] - 1) + '%<br>' : '+%<br>');
     }
+    div.innerHTML += '<br><i>(Click to toggle map)</i>';
     div.style.backgroundColor = 'white';
     div.style.padding = '6px 8px';
     div.style.fontSize = '12px';
     div.style.lineHeight = '18px';
     div.style.color = '#555';
+
+    // Make legend toggle choropleth layer
+    div.onclick = function () {
+      if (map.hasLayer(choroplethLayer)) {
+        map.removeLayer(choroplethLayer);
+      } else {
+        map.addLayer(choroplethLayer);
+      }
+    };
+
     return div;
   };
   legend.addTo(map);
@@ -104,7 +119,7 @@ function addLegend() {
 fetch('https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/merged_household_percent.geojson')
   .then(res => res.json())
   .then(data => {
-    L.geoJSON(data, {
+    choroplethLayer = L.geoJSON(data, {
       pane: 'choropleth',
       style: function (feature) {
         let p = feature.properties.percent || feature.properties.household_percent;
