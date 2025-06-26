@@ -140,9 +140,9 @@
 <h1>Same-Sex Households as a Share of All Couple Households (2020)</h1>
 <div id="map"></div>
 <footer>
-  Source: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank">U.S. Census Bureau</a>. Credit: Jake Cox / Block Club Chicago
+  Source: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank">U.S. Census Bureau</a> Credit: Jake Cox / Block Club Chicago
 </footer>
-
+  
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-search@2.9.9/dist/leaflet-search.min.js"></script>
 <script>
@@ -157,11 +157,11 @@ L.tileLayer('https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=suJ4vITHr
 }).addTo(map);
 
 const colorBins = [
-  { label: '0–2%', color: '#feedde', min: 0, max: 2.99 },
-  { label: '3–5%', color: '#fdbe85', min: 3, max: 5.99 },
-  { label: '6–10%', color: '#fd8d3c', min: 6, max: 10.99 },
-  { label: '11–15%', color: '#e6550d', min: 11, max: 15.99 },
-  { label: '16%+', color: '#a63603', min: 16, max: Infinity }
+ {label: '0–2%', color: '#FEEDDE', min: 0, max: 2.99 },
+  { label: '3–5%', color: '#FDBE85', min: 3, max: 5.99 },
+  { label: '6–10%', color: '#FD8D3C', min: 6, max: 10.99 },
+  { label: '11–15%', color: '#E94C21', min: 11, max: 15.99 },
+  { label: '16%+', color: '#C43913', min: 16, max: Infinity }
 ];
 
 let activeBins = new Set(colorBins.map(b => b.label));
