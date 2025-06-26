@@ -2,15 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Community Area Search Map</title>
+  <title>How Gay Is My Neighborhood?</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-search@2.9.9/dist/leaflet-search.min.css" />
   <style>
-    body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
-    h1 { margin: 0; padding: 12px 16px; background: white; font-size: 18px; border-bottom: 1px solid #ccc; }
-    #map { flex: 1; }
-    footer { background: white; font-size: 12px; padding: 8px 16px; border-top: 1px solid #ccc; text-align: left; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    h1 {
+      margin: 0;
+      padding: 12px 16px;
+      background: #000000;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    #map {
+      flex: 1;
+    }
+
+    footer {
+      background: #000000;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 16px;
+      text-align: left;
+    }
+
+    footer a {
+      color: #ffffff;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
     .leaflet-control-search .search-input {
       min-width: 240px;
       max-width: 300px;
@@ -18,10 +51,12 @@
       font-size: 13px;
       line-height: 18px;
     }
+
     .leaflet-control-search {
       width: auto !important;
       max-width: none !important;
     }
+
     .info.legend {
       background: white;
       padding: 6px 8px;
@@ -30,17 +65,73 @@
       color: #555;
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
     }
+
     .legend-toggle {
       cursor: pointer;
       margin-bottom: 4px;
       display: flex;
       align-items: center;
     }
+
     .legend-toggle span {
       display: inline-block;
       width: 18px;
       height: 18px;
       margin-right: 5px;
+    }
+
+  .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #111111;
+}
+
+.popup-card {
+  max-width: 240px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.popup-header {
+  background: #e62605;
+  color: #ffffff;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.popup-body {
+  background: #ffffff;
+  color: #111111;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.popup-body .label {
+  font-weight: 600;
+  display: inline-block;
+  width: 100px;
+  color: #333;
+}
+
+.popup-body .value {
+  display: inline;
+}
+    .popup-card a {
+      color: #0000ee;
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -116,7 +207,14 @@ function renderChoropleth() {
       let percentage = feature.properties.percent;
       if (typeof percentage === 'string') percentage = parseFloat(percentage.replace('%', ''));
       const formatted = (!isNaN(percentage) ? percentage.toFixed(2) + '%' : 'No data');
-      layer.bindPopup(`<b>Census Tract ${tractId}</b><br>Household Percentage: ${formatted}`);
+      layer.bindPopup(`
+        <div class="popup-card">
+          <div class="popup-header">Census Tract ${tractId}</div>
+          <div class="popup-body">
+            <div><span class="label">LGBT Couples:</span> <span class="value">${formatted}</span></div>
+          </div>
+        </div>
+      `);
     }
   }).addTo(map);
 }
@@ -188,7 +286,14 @@ fetch('https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95b
 
     searchControl.on('search:locationfound', function(e) {
       map.fitBounds(e.layer.getBounds());
-      const popupContent = `<b>Community Area</b><br>${e.layer.feature.properties.searchLabel}`;
+      const popupContent = `
+        <div class="popup-card">
+          <div class="popup-header">Community Area</div>
+          <div class="popup-body">
+            <div><span class="label">Name:</span> <span class="value">${e.layer.feature.properties.searchLabel}</span></div>
+          </div>
+        </div>
+      `;
       e.layer.bindPopup(popupContent).openPopup();
       e.layer.setStyle({ color: '#FFD700', weight: 3, opacity: 1 });
       setTimeout(() => communityLayer.resetStyle(e.layer), 2000);
