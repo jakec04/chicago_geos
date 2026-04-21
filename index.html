@@ -5,302 +5,513 @@
   <title>How Gay Is My Neighborhood?</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-search@2.9.9/dist/leaflet-search.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <style>
+    html, body { height: 100%; }
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
       display: flex;
       flex-direction: column;
-      height: 100vh;
     }
 
     h1 {
       margin: 0;
       padding: 12px 16px;
-      background: #000000;
-      color: #ffffff;
+      background: #000;
+      color: #fff;
       font-size: 18px;
       font-weight: 600;
+      flex: 0 0 auto;
     }
 
+    /* KEY FIX: min-height guarantees a non-zero size before MapLibre inits.
+       flex:1 inside a flex column can resolve to 0 on first paint, which
+       leaves the GL canvas sized 0x0 and blank forever. */
     #map {
-      flex: 1;
+      flex: 1 1 auto;
+      position: relative;
+      min-height: 300px;
+      width: 100%;
     }
 
     footer {
-      background: #000000;
-      color: #ffffff;
+      background: #000;
+      color: #fff;
       font-size: 12px;
       font-weight: 600;
       padding: 8px 16px;
-      text-align: left;
+      flex: 0 0 auto;
     }
 
-    footer a {
-      color: #ffffff;
-      text-decoration: underline;
-      font-weight: 600;
-    }
+    footer a { color: #fff; text-decoration: underline; }
 
-    .leaflet-control-search .search-input {
-      min-width: 240px;
-      max-width: 300px;
-      padding-right: 28px;
+    .search-wrap {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
       font-size: 13px;
-      line-height: 18px;
     }
 
-    .leaflet-control-search {
-      width: auto !important;
-      max-width: none !important;
+    .search-wrap input {
+      width: 260px;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
     }
 
-    .info.legend {
-      background: white;
-      padding: 6px 8px;
+    .search-results {
+      max-height: 240px;
+      overflow-y: auto;
+      border-top: 1px solid #eee;
+    }
+
+    .search-results div {
+      padding: 6px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f3f3f3;
+    }
+
+    .search-results div:hover,
+    .search-results div.active { background: #f5f5f5; }
+    .search-results:empty { display: none; }
+
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      right: 10px;
+      z-index: 2;
+      background: #fff;
+      padding: 8px 10px;
       font-size: 12px;
       line-height: 18px;
-      color: #555;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      color: #333;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      border-radius: 4px;
     }
 
-    .legend-toggle {
+    .legend-row {
       cursor: pointer;
-      margin-bottom: 4px;
       display: flex;
       align-items: center;
+      margin-bottom: 3px;
+      user-select: none;
     }
 
-    .legend-toggle span {
+    .legend-row:focus { outline: 2px solid #0066cc; outline-offset: 1px; }
+
+    .legend-row .swatch {
       display: inline-block;
       width: 18px;
       height: 18px;
-      margin-right: 5px;
+      margin-right: 6px;
+      border: 1px solid #999;
     }
 
-  .leaflet-popup-content-wrapper {
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-  border-radius: 0;
-}
+    .legend-row.inactive { opacity: 0.4; }
+    .legend-title { font-weight: 600; margin-bottom: 5px; }
 
-.leaflet-popup-content {
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #111111;
-}
+    .maplibregl-popup-content {
+      padding: 0;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      font-family: 'Inter', sans-serif;
+    }
 
-.popup-card {
-  max-width: 240px;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  border-radius: 6px;
-  overflow: hidden;
-}
+    .maplibregl-popup-close-button {
+      color: #fff;
+      font-size: 18px;
+      padding: 2px 6px;
+    }
 
-.popup-header {
-  background: #e62605;
-  color: #ffffff;
-  padding: 8px 10px;
-  font-weight: 600;
-  font-size: 14px;
-}
+    .popup-header {
+      background: #e62605;
+      color: #fff;
+      padding: 8px 10px;
+      font-weight: 600;
+      font-size: 14px;
+    }
 
-.popup-body {
-  background: #ffffff;
-  color: #111111;
-  padding: 8px 10px;
-  font-size: 13px;
-}
+    .popup-body {
+      background: #fff;
+      color: #111;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
 
-.popup-body .label {
-  font-weight: 600;
-  display: inline-block;
-  width: 100px;
-  color: #333;
-}
+    .popup-body .label {
+      font-weight: 600;
+      display: inline-block;
+      width: 110px;
+      color: #333;
+    }
 
-.popup-body .value {
-  display: inline;
-}
-    .popup-card a {
-      color: #0000ee;
-      text-decoration: underline;
+    .status-banner {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      padding: 8px 14px;
+      border-left: 4px solid #e62605;
+      font-size: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 3;
+      max-width: 80%;
     }
   </style>
 </head>
 <body>
 
 <h1>Same-Sex Households as a Share of All Couple Households (2020)</h1>
-<div id="map"></div>
-<footer>
-  Source: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank">U.S. Census Bureau</a> Credit: Jake Cox / Block Club Chicago
-</footer>
-  
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-search@2.9.9/dist/leaflet-search.min.js"></script>
-<script>
-const map = L.map('map').setView([41.888790, -87.630782], 10);
-map.createPane('choropleth');
-map.getPane('choropleth').style.zIndex = 400;
-map.createPane('boundaries');
-map.getPane('boundaries').style.zIndex = 650;
 
-L.tileLayer('https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=suJ4vITHrTOiQeBY9VAK', {
-  attribution: '&copy; MapTiler &copy; OpenStreetMap contributors'
-}).addTo(map);
+<div id="map" aria-label="Map of same-sex household share by Chicago census tract">
+  <div class="search-wrap">
+    <input
+      id="search-input"
+      type="text"
+      placeholder="How Gay is your Neighborhood?"
+      aria-label="Search Chicago community areas"
+      autocomplete="off"
+    >
+    <div class="search-results" id="search-results" role="listbox"></div>
+  </div>
+</div>
+
+<footer>
+  Source: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank" rel="noopener">U.S. Census Bureau</a>.
+  Credit: Jake Cox / Block Club Chicago.
+</footer>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const MAPTILER_KEY = 'suJ4vITHrTOiQeBY9VAK';
+const TRACTS_URL = 'https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/merged_household_percent.geojson';
+const BOUNDARIES_URL = 'https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/Boundaries%20-%20Community%20Areas_20250616%20copy.geojson';
 
 const colorBins = [
- {label: '0–2%', color: '#FEEDDE', min: 0, max: 2.99 },
-  { label: '3–5%', color: '#FDBE85', min: 3, max: 5.99 },
-  { label: '6–10%', color: '#FD8D3C', min: 6, max: 10.99 },
-  { label: '11–15%', color: '#E94C21', min: 11, max: 15.99 },
-  { label: '16%+', color: '#C43913', min: 16, max: Infinity }
+  { label: '0–2%',   color: '#FEEDDE', min: 0,   max: 3 },
+  { label: '3–5%',   color: '#FDBE85', min: 3,   max: 6 },
+  { label: '6–10%',  color: '#FD8D3C', min: 6,   max: 11 },
+  { label: '11–15%', color: '#E94C21', min: 11,  max: 16 },
+  { label: '16%+',   color: '#C43913', min: 16,  max: Infinity }
 ];
 
-let activeBins = new Set(colorBins.map(b => b.label));
-let geoData, choroplethLayer;
+const activeBins = new Set(colorBins.map(b => b.label));
 
-function getColorBinLabel(p) {
-  if (typeof p !== 'number' || isNaN(p)) return null;
-  for (const bin of colorBins) {
-    if (p >= bin.min && p <= bin.max) return bin.label;
+function showStatus(msg, isError) {
+  let b = document.querySelector('.status-banner');
+  if (!b) {
+    b = document.createElement('div');
+    b.className = 'status-banner';
+    document.getElementById('map').appendChild(b);
   }
-  return null;
+  b.textContent = msg;
+  b.style.borderLeftColor = isError ? '#e62605' : '#0066cc';
 }
 
-function getColorByLabel(label) {
-  const bin = colorBins.find(b => b.label === label);
-  return bin ? bin.color : '#ffffff';
-}
-
-function renderChoropleth() {
-  if (choroplethLayer) map.removeLayer(choroplethLayer);
-  choroplethLayer = L.geoJSON(geoData, {
-    pane: 'choropleth',
-    filter: feature => {
-      let p = feature.properties.percent;
-      if (typeof p === 'string') p = parseFloat(p.replace('%', ''));
-      const label = getColorBinLabel(p);
-      return label && activeBins.has(label);
-    },
-    style: feature => {
-      let p = feature.properties.percent;
-      if (typeof p === 'string') p = parseFloat(p.replace('%', ''));
-      const label = getColorBinLabel(p);
-      return {
-        fillColor: getColorByLabel(label),
-        weight: 0.5,
-        opacity: 0.5,
-        color: 'white',
-        fillOpacity: 0.7
-      };
-    },
-    onEachFeature: (feature, layer) => {
-      const tractId = feature.properties.NAME || feature.properties.TRACTCE || 'Unknown Tract';
-      let percentage = feature.properties.percent;
-      if (typeof percentage === 'string') percentage = parseFloat(percentage.replace('%', ''));
-      const formatted = (!isNaN(percentage) ? percentage.toFixed(2) + '%' : 'No data');
-      layer.bindPopup(`
-        <div class="popup-card">
-          <div class="popup-header">Census Tract ${tractId}</div>
-          <div class="popup-body">
-            <div><span class="label">LGBT Couples:</span> <span class="value">${formatted}</span></div>
-          </div>
-        </div>
-      `);
+// Fallback basemap: OSM raster tiles, no key needed.
+// Used if MapTiler's style.json returns an error (bad key, CORS, network).
+const FALLBACK_STYLE = {
+  version: 8,
+  sources: {
+    'osm-raster': {
+      type: 'raster',
+      tiles: [
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+      ],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors',
+      maxzoom: 19
     }
-  }).addTo(map);
+  },
+  layers: [{ id: 'osm-raster', type: 'raster', source: 'osm-raster' }]
+};
+
+async function chooseStyle() {
+  const mapTilerStyle = `https://api.maptiler.com/maps/dataviz/style.json?key=${MAPTILER_KEY}`;
+  try {
+    const res = await fetch(mapTilerStyle);
+    if (!res.ok) {
+      console.warn('MapTiler style HTTP', res.status, '— using OSM fallback');
+      showStatus('MapTiler basemap unavailable (status ' + res.status + ') — using OpenStreetMap fallback', true);
+      return FALLBACK_STYLE;
+    }
+    return mapTilerStyle;
+  } catch (err) {
+    console.warn('MapTiler style fetch failed — using OSM fallback', err);
+    showStatus('Basemap request failed — using OpenStreetMap fallback', true);
+    return FALLBACK_STYLE;
+  }
 }
 
-function addLegend() {
-  const legend = L.control({ position: 'bottomright' });
-  legend.onAdd = function () {
-    const div = L.DomUtil.create('div', 'info legend');
+(async () => {
+  const style = await chooseStyle();
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style,
+    center: [-87.630782, 41.888790],
+    zoom: 9.5,
+    minZoom: 8,
+    maxZoom: 16
+  });
+
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+  // Resize nudges — cover the case where the container measured 0 at init.
+  setTimeout(() => map.resize(), 0);
+  setTimeout(() => map.resize(), 200);
+  window.addEventListener('resize', () => map.resize());
+
+  map.on('error', (e) => {
+    console.error('MapLibre error:', e && e.error);
+  });
+
+  function parsePercent(p) {
+    if (typeof p === 'number') return p;
+    if (typeof p === 'string') return parseFloat(p.replace('%', ''));
+    return NaN;
+  }
+
+  function buildColorExpression() {
+    const stepExpr = ['step', ['to-number', ['get', 'percent'], -1], colorBins[0].color];
+    for (let i = 1; i < colorBins.length; i++) {
+      stepExpr.push(colorBins[i].min, colorBins[i].color);
+    }
+    return [
+      'case',
+      ['<', ['to-number', ['get', 'percent'], -1], 0], 'rgba(0,0,0,0)',
+      stepExpr
+    ];
+  }
+
+  function buildVisibilityFilter() {
+    const conditions = ['any'];
+    colorBins.forEach(bin => {
+      if (!activeBins.has(bin.label)) return;
+      const p = ['to-number', ['get', 'percent'], -1];
+      if (bin.max === Infinity) conditions.push(['>=', p, bin.min]);
+      else conditions.push(['all', ['>=', p, bin.min], ['<', p, bin.max]]);
+    });
+    return conditions;
+  }
+
+  map.on('load', () => {
+    map.addSource('tracts', { type: 'geojson', data: TRACTS_URL });
+
+    map.addLayer({
+      id: 'tracts-fill',
+      type: 'fill',
+      source: 'tracts',
+      paint: {
+        'fill-color': buildColorExpression(),
+        'fill-opacity': 0.7,
+        'fill-outline-color': '#ffffff'
+      },
+      filter: buildVisibilityFilter()
+    });
+
+    map.addSource('boundaries', { type: 'geojson', data: BOUNDARIES_URL });
+
+    map.addLayer({
+      id: 'boundaries-line',
+      type: 'line',
+      source: 'boundaries',
+      paint: { 'line-color': '#000000', 'line-width': 2 }
+    });
+
+    map.addLayer({
+      id: 'boundaries-highlight',
+      type: 'line',
+      source: 'boundaries',
+      paint: { 'line-color': '#FFD700', 'line-width': 4 },
+      filter: ['==', ['get', '__nothing__'], 'nothing']
+    });
+
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '260px' });
+
+    map.on('click', 'tracts-fill', (e) => {
+      if (!e.features.length) return;
+      const f = e.features[0];
+      const tractId = f.properties.NAME || f.properties.TRACTCE || 'Unknown';
+      const pct = parsePercent(f.properties.percent);
+      const formatted = !isNaN(pct) ? pct.toFixed(2) + '%' : 'No data';
+      popup.setLngLat(e.lngLat).setHTML(`
+        <div class="popup-header">Census Tract ${tractId}</div>
+        <div class="popup-body">
+          <div><span class="label">Same-sex couples:</span> ${formatted}</div>
+        </div>
+      `).addTo(map);
+    });
+
+    map.on('mouseenter', 'tracts-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'tracts-fill', () => { map.getCanvas().style.cursor = ''; });
+
+    buildLegend();
+    setupSearch();
+  });
+
+  function buildLegend() {
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = '<div class="legend-title">Share of couple households</div>';
+
     colorBins.forEach(bin => {
       const row = document.createElement('div');
-      row.className = 'legend-toggle';
-      row.innerHTML = `<span style="background:${bin.color}"></span>${bin.label}`;
-      row.onclick = () => {
+      row.className = 'legend-row';
+      row.setAttribute('role', 'button');
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('aria-pressed', 'true');
+      row.innerHTML = `<span class="swatch" style="background:${bin.color}"></span>${bin.label}`;
+
+      const toggle = () => {
         if (activeBins.has(bin.label)) {
           activeBins.delete(bin.label);
-          row.style.opacity = 0.4;
+          row.classList.add('inactive');
+          row.setAttribute('aria-pressed', 'false');
         } else {
           activeBins.add(bin.label);
-          row.style.opacity = 1;
+          row.classList.remove('inactive');
+          row.setAttribute('aria-pressed', 'true');
         }
-        renderChoropleth();
+        map.setFilter('tracts-fill', buildVisibilityFilter());
       };
-      div.appendChild(row);
-    });
-    return div;
-  };
-  legend.addTo(map);
-}
 
-fetch('https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/merged_household_percent.geojson')
-  .then(res => res.json())
-  .then(data => {
-    geoData = data;
-    renderChoropleth();
-    addLegend();
-  });
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
 
-fetch('https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/Boundaries%20-%20Community%20Areas_20250616%20copy.geojson')
-  .then(res => res.json())
-  .then(data => {
-    L.geoJSON(data, {
-      pane: 'boundaries',
-      interactive: false,
-      style: {
-        color: '#000000',
-        weight: 2.5,
-        opacity: 1,
-        fillOpacity: 0
-      }
-    }).addTo(map);
-
-    const communityLayer = L.geoJSON(data, {
-      style: { opacity: 0, fillOpacity: 0 },
-      onEachFeature: function (feature, layer) {
-        const name = feature.properties.community || feature.properties.community_area || feature.properties.name || 'Unknown';
-        feature.properties.searchLabel = name;
-        layer.feature.properties.searchLabel = name;
-      }
+      legend.appendChild(row);
     });
 
-    const searchControl = new L.Control.Search({
-      layer: communityLayer,
-      propertyName: 'searchLabel',
-      marker: false,
-      collapsed: false,
-      initial: false,
-      textPlaceholder: 'How Gay is your Neighborhood?'
-    });
+    document.getElementById('map').appendChild(legend);
+  }
 
-    searchControl.on('search:locationfound', function(e) {
-      map.fitBounds(e.layer.getBounds());
-      const popupContent = `
-        <div class="popup-card">
-          <div class="popup-header">Community Area</div>
-          <div class="popup-body">
-            <div><span class="label">Name:</span> <span class="value">${e.layer.feature.properties.searchLabel}</span></div>
-          </div>
-        </div>
-      `;
-      e.layer.bindPopup(popupContent).openPopup();
-      e.layer.setStyle({ color: '#FFD700', weight: 3, opacity: 1 });
-      setTimeout(() => communityLayer.resetStyle(e.layer), 2000);
-    });
+  function setupSearch() {
+    const input = document.getElementById('search-input');
+    const resultsEl = document.getElementById('search-results');
 
-    map.addControl(searchControl);
-  });
+    fetch(BOUNDARIES_URL)
+      .then(r => {
+        if (!r.ok) throw new Error('Boundaries fetch failed');
+        return r.json();
+      })
+      .then(data => {
+        const features = data.features.map(f => ({
+          name: f.properties.community || f.properties.community_area || f.properties.name || 'Unknown',
+          feature: f
+        }));
+
+        let activeIdx = -1;
+        let currentMatches = [];
+
+        function renderResults(matches) {
+          resultsEl.innerHTML = '';
+          activeIdx = -1;
+          currentMatches = matches;
+          matches.slice(0, 8).forEach((m, i) => {
+            const row = document.createElement('div');
+            row.setAttribute('role', 'option');
+            row.textContent = m.name;
+            row.addEventListener('click', () => selectMatch(m));
+            row.addEventListener('mouseenter', () => {
+              resultsEl.querySelectorAll('div').forEach(d => d.classList.remove('active'));
+              row.classList.add('active');
+              activeIdx = i;
+            });
+            resultsEl.appendChild(row);
+          });
+        }
+
+        function selectMatch(match) {
+          const bbox = getBBox(match.feature);
+          map.fitBounds(bbox, { padding: 40, maxZoom: 13, duration: 800 });
+
+          const nameKeys = ['community', 'community_area', 'name'];
+          const keyUsed = nameKeys.find(k => match.feature.properties[k] !== undefined);
+          if (keyUsed) {
+            map.setFilter('boundaries-highlight', ['==', ['get', keyUsed], match.name]);
+          }
+          setTimeout(() => {
+            map.setFilter('boundaries-highlight', ['==', ['get', '__nothing__'], 'nothing']);
+          }, 3000);
+
+          const center = bboxCenter(bbox);
+          new maplibregl.Popup({ closeButton: true, maxWidth: '260px' })
+            .setLngLat(center)
+            .setHTML(`
+              <div class="popup-header">Community Area</div>
+              <div class="popup-body">
+                <div><span class="label">Name:</span> ${match.name}</div>
+              </div>
+            `)
+            .addTo(map);
+
+          input.value = match.name;
+          resultsEl.innerHTML = '';
+        }
+
+        input.addEventListener('input', () => {
+          const q = input.value.trim().toLowerCase();
+          if (!q) { resultsEl.innerHTML = ''; return; }
+          renderResults(features.filter(f => f.name.toLowerCase().includes(q)));
+        });
+
+        input.addEventListener('keydown', (e) => {
+          const rows = resultsEl.querySelectorAll('div');
+          if (!rows.length) return;
+          if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, rows.length - 1); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); }
+          else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIdx >= 0 && currentMatches[activeIdx]) selectMatch(currentMatches[activeIdx]);
+            else if (currentMatches[0]) selectMatch(currentMatches[0]);
+            return;
+          } else if (e.key === 'Escape') { resultsEl.innerHTML = ''; return; }
+          else return;
+          rows.forEach(r => r.classList.remove('active'));
+          if (rows[activeIdx]) rows[activeIdx].classList.add('active');
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.search-wrap')) resultsEl.innerHTML = '';
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        input.placeholder = 'Search unavailable';
+        input.disabled = true;
+      });
+  }
+
+  function getBBox(feature) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const walk = (coords) => {
+      if (typeof coords[0] === 'number') {
+        minX = Math.min(minX, coords[0]); maxX = Math.max(maxX, coords[0]);
+        minY = Math.min(minY, coords[1]); maxY = Math.max(maxY, coords[1]);
+      } else coords.forEach(walk);
+    };
+    walk(feature.geometry.coordinates);
+    return [[minX, minY], [maxX, maxY]];
+  }
+
+  function bboxCenter(bbox) {
+    return [(bbox[0][0] + bbox[1][0]) / 2, (bbox[0][1] + bbox[1][1]) / 2];
+  }
+})();
 </script>
 
 </body>
