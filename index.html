@@ -4,30 +4,60 @@
   <meta charset="UTF-8">
   <title>How Gay Is My Neighborhood?</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <style>
+    :root {
+      /* Palette — a restrained violet → teal ramp, closer to FT / Guardian / Bloomberg than ColorBrewer */
+      --bg:        #0f1115;
+      --surface:   #ffffff;
+      --ink:       #1a1d24;
+      --ink-dim:   #5a6171;
+      --rule:      #e6e8ec;
+      --accent:    #6366f1;   /* indigo, used for UI focus / highlights */
+      --highlight: #fbbf24;   /* amber, for the search-selected community */
+
+      /* Choropleth ramp — perceptually uniform-ish, avoids pure primaries */
+      --c1: #ecf0f5;   /* near-white cool grey */
+      --c2: #c7d4e8;   /* soft periwinkle */
+      --c3: #8aa3d4;   /* mid blue-violet */
+      --c4: #6366f1;   /* indigo */
+      --c5: #3730a3;   /* deep indigo */
+    }
+
     html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: 'Inter', sans-serif;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
       display: flex;
       flex-direction: column;
     }
 
-    h1 {
-      margin: 0;
-      padding: 12px 16px;
-      background: #000;
+    header {
+      padding: 14px 20px 12px;
+      background: var(--bg);
       color: #fff;
-      font-size: 18px;
-      font-weight: 600;
       flex: 0 0 auto;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
-    /* KEY FIX: min-height guarantees a non-zero size before MapLibre inits.
-       flex:1 inside a flex column can resolve to 0 on first paint, which
-       leaves the GL canvas sized 0x0 and blank forever. */
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    header .subtitle {
+      margin-top: 2px;
+      font-size: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.02em;
+    }
+
     #map {
       flex: 1 1 auto;
       position: relative;
@@ -36,149 +66,249 @@
     }
 
     footer {
-      background: #000;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 8px 16px;
+      background: var(--bg);
+      color: rgba(255,255,255,0.6);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      padding: 10px 20px;
       flex: 0 0 auto;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      letter-spacing: 0.02em;
     }
 
-    footer a { color: #fff; text-decoration: underline; }
+    footer a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      transition: border-color 0.15s;
+    }
 
+    footer a:hover { border-bottom-color: #fff; }
+
+    /* ---------- Search ---------- */
     .search-wrap {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 14px;
+      left: 14px;
       z-index: 2;
-      background: #fff;
-      border-radius: 4px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      background: var(--surface);
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(15, 17, 21, 0.12), 0 1px 2px rgba(15, 17, 21, 0.08);
       font-size: 13px;
+      border: 1px solid var(--rule);
+      overflow: hidden;
     }
 
     .search-wrap input {
       width: 260px;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       font-family: inherit;
       font-size: 13px;
       outline: none;
+      color: var(--ink);
+    }
+
+    .search-wrap input::placeholder {
+      color: var(--ink-dim);
+    }
+
+    .search-wrap input:focus {
+      box-shadow: inset 0 0 0 2px var(--accent);
     }
 
     .search-results {
       max-height: 240px;
       overflow-y: auto;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--rule);
     }
 
     .search-results div {
-      padding: 6px 10px;
+      padding: 8px 12px;
       cursor: pointer;
-      border-bottom: 1px solid #f3f3f3;
+      border-bottom: 1px solid var(--rule);
+      font-size: 13px;
+      color: var(--ink);
     }
 
+    .search-results div:last-child { border-bottom: none; }
+
     .search-results div:hover,
-    .search-results div.active { background: #f5f5f5; }
+    .search-results div.active {
+      background: #f4f5f9;
+      color: var(--accent);
+    }
+
     .search-results:empty { display: none; }
 
+    /* ---------- Legend ---------- */
     .legend {
       position: absolute;
-      bottom: 20px;
-      right: 10px;
+      bottom: 24px;
+      right: 14px;
       z-index: 2;
-      background: #fff;
-      padding: 8px 10px;
+      background: var(--surface);
+      padding: 12px 14px;
       font-size: 12px;
-      line-height: 18px;
-      color: #333;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-      border-radius: 4px;
+      line-height: 20px;
+      color: var(--ink);
+      box-shadow: 0 4px 14px rgba(15, 17, 21, 0.12), 0 1px 2px rgba(15, 17, 21, 0.08);
+      border-radius: 8px;
+      border: 1px solid var(--rule);
+      min-width: 180px;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-dim);
+      font-family: 'IBM Plex Mono', monospace;
     }
 
     .legend-row {
       cursor: pointer;
       display: flex;
       align-items: center;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       user-select: none;
+      padding: 2px 4px;
+      margin-left: -4px;
+      border-radius: 4px;
+      transition: background 0.15s;
     }
 
-    .legend-row:focus { outline: 2px solid #0066cc; outline-offset: 1px; }
+    .legend-row:hover { background: #f4f5f9; }
+    .legend-row:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
 
     .legend-row .swatch {
       display: inline-block;
-      width: 18px;
-      height: 18px;
-      margin-right: 6px;
-      border: 1px solid #999;
+      width: 16px;
+      height: 16px;
+      margin-right: 10px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.08);
+      flex: 0 0 auto;
     }
 
-    .legend-row.inactive { opacity: 0.4; }
-    .legend-title { font-weight: 600; margin-bottom: 5px; }
+    .legend-row.inactive { opacity: 0.35; }
+    .legend-row.inactive .swatch { filter: grayscale(0.4); }
 
+    /* ---------- Popup ---------- */
     .maplibregl-popup-content {
       padding: 0;
-      border-radius: 6px;
+      border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      font-family: 'Inter', sans-serif;
+      box-shadow: 0 6px 20px rgba(15, 17, 21, 0.18), 0 1px 2px rgba(15, 17, 21, 0.06);
+      font-family: 'DM Sans', sans-serif;
+      border: 1px solid var(--rule);
     }
 
     .maplibregl-popup-close-button {
-      color: #fff;
+      color: rgba(255,255,255,0.8);
       font-size: 18px;
-      padding: 2px 6px;
+      padding: 4px 8px;
+      right: 2px;
+      top: 2px;
+    }
+
+    .maplibregl-popup-close-button:hover {
+      color: #fff;
+      background: transparent;
     }
 
     .popup-header {
-      background: #e62605;
+      background: var(--ink);
       color: #fff;
-      padding: 8px 10px;
-      font-weight: 600;
-      font-size: 14px;
+      padding: 10px 14px;
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'IBM Plex Mono', monospace;
     }
 
     .popup-body {
       background: #fff;
-      color: #111;
-      padding: 8px 10px;
-      font-size: 13px;
+      color: var(--ink);
+      padding: 12px 14px;
+      font-size: 14px;
     }
 
-    .popup-body .label {
-      font-weight: 600;
-      display: inline-block;
-      width: 110px;
-      color: #333;
+    .popup-name {
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 6px;
+      letter-spacing: -0.005em;
     }
 
+    .popup-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .popup-stat .stat-label {
+      font-size: 11px;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .popup-stat .stat-value {
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- Status banner ---------- */
     .status-banner {
       position: absolute;
-      top: 10px;
+      top: 14px;
       left: 50%;
       transform: translateX(-50%);
-      background: #fff;
+      background: var(--surface);
       padding: 8px 14px;
-      border-left: 4px solid #e62605;
+      border-left: 3px solid var(--accent);
       font-size: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 14px rgba(15, 17, 21, 0.15);
       z-index: 3;
       max-width: 80%;
+      border-radius: 4px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* MapLibre navigation control tweaks */
+    .maplibregl-ctrl-group {
+      border-radius: 8px !important;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 17, 21, 0.12), 0 1px 2px rgba(15, 17, 21, 0.08) !important;
+      border: 1px solid var(--rule) !important;
     }
   </style>
 </head>
 <body>
 
-<h1>Same-Sex Households as a Share of All Couple Households (2020)</h1>
+<header>
+  <h1>How Gay Is My Neighborhood?</h1>
+  <div class="subtitle">Same-sex couple households by census tract · Chicago · 2020</div>
+</header>
 
 <div id="map" aria-label="Map of same-sex household share by Chicago census tract">
   <div class="search-wrap">
     <input
       id="search-input"
       type="text"
-      placeholder="How Gay is your Neighborhood?"
+      placeholder="Search a community area…"
       aria-label="Search Chicago community areas"
       autocomplete="off"
     >
@@ -187,8 +317,8 @@
 </div>
 
 <footer>
-  Source: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank" rel="noopener">U.S. Census Bureau</a>.
-  Credit: Jake Cox / Block Club Chicago.
+  DATA: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank" rel="noopener">U.S. Census Bureau, Decennial 2020</a>
+  &nbsp;·&nbsp; BUILT WITH MAPLIBRE GL
 </footer>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -197,12 +327,13 @@ const MAPTILER_KEY = 'suJ4vITHrTOiQeBY9VAK';
 const TRACTS_URL = 'https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/merged_household_percent.geojson';
 const BOUNDARIES_URL = 'https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/Boundaries%20-%20Community%20Areas_20250616%20copy.geojson';
 
+// Violet → teal ramp. Bins use half-open intervals [min, max).
 const colorBins = [
-  { label: '0–2%',   color: '#FEEDDE', min: 0,   max: 3 },
-  { label: '3–5%',   color: '#FDBE85', min: 3,   max: 6 },
-  { label: '6–10%',  color: '#FD8D3C', min: 6,   max: 11 },
-  { label: '11–15%', color: '#E94C21', min: 11,  max: 16 },
-  { label: '16%+',   color: '#C43913', min: 16,  max: Infinity }
+  { label: '0–2%',   color: '#ecf0f5', min: 0,   max: 3 },
+  { label: '3–5%',   color: '#c7d4e8', min: 3,   max: 6 },
+  { label: '6–10%',  color: '#8aa3d4', min: 6,   max: 11 },
+  { label: '11–15%', color: '#6366f1', min: 11,  max: 16 },
+  { label: '16%+',   color: '#3730a3', min: 16,  max: Infinity }
 ];
 
 const activeBins = new Set(colorBins.map(b => b.label));
@@ -215,27 +346,29 @@ function showStatus(msg, isError) {
     document.getElementById('map').appendChild(b);
   }
   b.textContent = msg;
-  b.style.borderLeftColor = isError ? '#e62605' : '#0066cc';
+  b.style.borderLeftColor = isError ? '#ef4444' : '#6366f1';
 }
 
-// Fallback basemap: OSM raster tiles, no key needed.
-// Used if MapTiler's style.json returns an error (bad key, CORS, network).
+// Dark, minimal fallback basemap using Carto's positron-style raster rendering
+// when MapTiler is unavailable. Uses CARTO basemaps (free, no key needed for personal use).
 const FALLBACK_STYLE = {
   version: 8,
+  glyphs: 'https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf',
   sources: {
-    'osm-raster': {
+    'carto-light': {
       type: 'raster',
       tiles: [
-        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+        'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png'
       ],
       tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxzoom: 19
     }
   },
-  layers: [{ id: 'osm-raster', type: 'raster', source: 'osm-raster' }]
+  layers: [{ id: 'carto-light', type: 'raster', source: 'carto-light' }]
 };
 
 async function chooseStyle() {
@@ -243,14 +376,14 @@ async function chooseStyle() {
   try {
     const res = await fetch(mapTilerStyle);
     if (!res.ok) {
-      console.warn('MapTiler style HTTP', res.status, '— using OSM fallback');
-      showStatus('MapTiler basemap unavailable (status ' + res.status + ') — using OpenStreetMap fallback', true);
+      console.warn('MapTiler style HTTP', res.status, '— using CARTO fallback');
+      showStatus('Using CARTO fallback basemap', true);
       return FALLBACK_STYLE;
     }
     return mapTilerStyle;
   } catch (err) {
-    console.warn('MapTiler style fetch failed — using OSM fallback', err);
-    showStatus('Basemap request failed — using OpenStreetMap fallback', true);
+    console.warn('MapTiler fetch failed — using CARTO fallback', err);
+    showStatus('Using CARTO fallback basemap', true);
     return FALLBACK_STYLE;
   }
 }
@@ -261,15 +394,14 @@ async function chooseStyle() {
   const map = new maplibregl.Map({
     container: 'map',
     style,
-    center: [-87.630782, 41.888790],
-    zoom: 9.5,
+    center: [-87.630782, 41.858790],
+    zoom: 10,
     minZoom: 8,
     maxZoom: 16
   });
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
-  // Resize nudges — cover the case where the container measured 0 at init.
   setTimeout(() => map.resize(), 0);
   setTimeout(() => map.resize(), 200);
   window.addEventListener('resize', () => map.resize());
@@ -316,41 +448,98 @@ async function chooseStyle() {
       source: 'tracts',
       paint: {
         'fill-color': buildColorExpression(),
-        'fill-opacity': 0.7,
-        'fill-outline-color': '#ffffff'
+        'fill-opacity': 0.82,
+        'fill-outline-color': 'rgba(255, 255, 255, 0.4)'
       },
       filter: buildVisibilityFilter()
     });
 
     map.addSource('boundaries', { type: 'geojson', data: BOUNDARIES_URL });
 
+    // Softer boundary: dark, not pure black, with slight transparency
     map.addLayer({
       id: 'boundaries-line',
       type: 'line',
       source: 'boundaries',
-      paint: { 'line-color': '#000000', 'line-width': 2 }
+      paint: {
+        'line-color': '#1a1d24',
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          9,  1,
+          12, 1.8,
+          15, 2.4
+        ],
+        'line-opacity': 0.7
+      }
     });
 
     map.addLayer({
       id: 'boundaries-highlight',
       type: 'line',
       source: 'boundaries',
-      paint: { 'line-color': '#FFD700', 'line-width': 4 },
+      paint: {
+        'line-color': '#fbbf24',
+        'line-width': 4,
+        'line-opacity': 0.95
+      },
       filter: ['==', ['get', '__nothing__'], 'nothing']
     });
 
-    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '260px' });
+    // Semi-transparent community area labels
+    map.addLayer({
+      id: 'boundaries-labels',
+      type: 'symbol',
+      source: 'boundaries',
+      layout: {
+        'text-field': [
+          'coalesce',
+          ['get', 'community'],
+          ['get', 'community_area'],
+          ['get', 'name'],
+          ''
+        ],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': [
+          'interpolate', ['linear'], ['zoom'],
+          9,  9,
+          11, 10.5,
+          14, 13
+        ],
+        'text-transform': 'uppercase',
+        'text-letter-spacing': 0.08,
+        'text-max-width': 8,
+        'text-allow-overlap': false,
+        'symbol-placement': 'point'
+      },
+      paint: {
+        'text-color': '#1a1d24',
+        'text-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          9.5, 0,
+          10,  0.7,
+          14,  0.85
+        ],
+        'text-halo-color': 'rgba(255, 255, 255, 0.9)',
+        'text-halo-width': 1.6,
+        'text-halo-blur': 0.4
+      }
+    });
+
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' });
 
     map.on('click', 'tracts-fill', (e) => {
       if (!e.features.length) return;
       const f = e.features[0];
       const tractId = f.properties.NAME || f.properties.TRACTCE || 'Unknown';
       const pct = parsePercent(f.properties.percent);
-      const formatted = !isNaN(pct) ? pct.toFixed(2) + '%' : 'No data';
+      const formatted = !isNaN(pct) ? pct.toFixed(1) + '%' : '—';
       popup.setLngLat(e.lngLat).setHTML(`
         <div class="popup-header">Census Tract ${tractId}</div>
         <div class="popup-body">
-          <div><span class="label">Same-sex couples:</span> ${formatted}</div>
+          <div class="popup-stat">
+            <span class="stat-label">Same-sex couples</span>
+            <span class="stat-value">${formatted}</span>
+          </div>
         </div>
       `).addTo(map);
     });
@@ -437,7 +626,7 @@ async function chooseStyle() {
 
         function selectMatch(match) {
           const bbox = getBBox(match.feature);
-          map.fitBounds(bbox, { padding: 40, maxZoom: 13, duration: 800 });
+          map.fitBounds(bbox, { padding: 60, maxZoom: 13, duration: 800 });
 
           const nameKeys = ['community', 'community_area', 'name'];
           const keyUsed = nameKeys.find(k => match.feature.properties[k] !== undefined);
@@ -449,12 +638,12 @@ async function chooseStyle() {
           }, 3000);
 
           const center = bboxCenter(bbox);
-          new maplibregl.Popup({ closeButton: true, maxWidth: '260px' })
+          new maplibregl.Popup({ closeButton: true, maxWidth: '280px' })
             .setLngLat(center)
             .setHTML(`
               <div class="popup-header">Community Area</div>
               <div class="popup-body">
-                <div><span class="label">Name:</span> ${match.name}</div>
+                <div class="popup-name">${match.name}</div>
               </div>
             `)
             .addTo(map);
