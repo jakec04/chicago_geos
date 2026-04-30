@@ -16,6 +16,7 @@
       --rule:      #e6e8ec;
       --accent:    #6366f1;   /* indigo, used for UI focus / highlights */
       --highlight: #fbbf24;   /* amber, for the search-selected community */
+      --enclave:   #ec4899;   /* magenta-pink, for the historical enclave overlay */
 
       /* Choropleth ramp — perceptually uniform-ish, avoids pure primaries */
       --c1: #ecf0f5;   /* near-white cool grey */
@@ -156,7 +157,7 @@
       box-shadow: 0 4px 14px rgba(15, 17, 21, 0.12), 0 1px 2px rgba(15, 17, 21, 0.08);
       border-radius: 8px;
       border: 1px solid var(--rule);
-      min-width: 180px;
+      min-width: 200px;
     }
 
     .legend-title {
@@ -167,6 +168,12 @@
       letter-spacing: 0.06em;
       color: var(--ink-dim);
       font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .legend-section {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--rule);
     }
 
     .legend-row {
@@ -195,6 +202,22 @@
       border-radius: 3px;
       border: 1px solid rgba(0,0,0,0.08);
       flex: 0 0 auto;
+    }
+
+    .legend-row .swatch.outline {
+      background: rgba(236, 72, 153, 0.12);
+      border: 1.5px dashed var(--enclave);
+    }
+
+    .legend-row .swatch.dot {
+      background: var(--enclave);
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--enclave);
+      width: 12px;
+      height: 12px;
+      margin-left: 2px;
+      margin-right: 12px;
     }
 
     .legend-row.inactive { opacity: 0.35; }
@@ -234,18 +257,38 @@
       font-family: 'IBM Plex Mono', monospace;
     }
 
+    .popup-header.enclave-header {
+      background: var(--enclave);
+    }
+
     .popup-body {
       background: #fff;
       color: var(--ink);
       padding: 12px 14px;
       font-size: 14px;
+      max-width: 260px;
     }
 
     .popup-name {
       font-weight: 700;
       font-size: 15px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       letter-spacing: -0.005em;
+    }
+
+    .popup-meta {
+      font-size: 11px;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-family: 'IBM Plex Mono', monospace;
+      margin-bottom: 8px;
+    }
+
+    .popup-desc {
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--ink);
     }
 
     .popup-stat {
@@ -318,6 +361,7 @@
 
 <footer>
   DATA: <a href="https://data.census.gov/table/DECENNIALDP2020.DP1" target="_blank" rel="noopener">U.S. Census Bureau, Decennial 2020</a>
+  &nbsp;·&nbsp; HISTORICAL ENCLAVE: AUTHOR RESEARCH
   &nbsp;·&nbsp; BUILT WITH MAPLIBRE GL
 </footer>
 
@@ -326,6 +370,88 @@
 const MAPTILER_KEY = 'suJ4vITHrTOiQeBY9VAK';
 const TRACTS_URL = 'https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/merged_household_percent.geojson';
 const BOUNDARIES_URL = 'https://raw.githubusercontent.com/jakec04/chicago_geos/e339130cd86a3ae95bc895e18a8c1f913e497dc3/Boundaries%20-%20Community%20Areas_20250616%20copy.geojson';
+
+// ----------------------------------------------------------------
+// Historical queer enclave overlay (your research polygon).
+// Original geometry was a closed LineString — we render it as both a
+// translucent fill and a bold dashed outline.
+// ----------------------------------------------------------------
+const ENCLAVE_COORDS = [
+  [-87.6263168352894, 41.81650971816629],
+  [-87.60664964932118, 41.81681955365093],
+  [-87.60652173266483, 41.80952610541348],
+  [-87.62602902281171, 41.809240070913404],
+  [-87.6263168352894, 41.81653355171892]
+];
+
+const enclavePolygon = {
+  type: 'FeatureCollection',
+  features: [{
+    type: 'Feature',
+    properties: { name: 'Historical queer enclave (study area)' },
+    geometry: { type: 'Polygon', coordinates: [ENCLAVE_COORDS] }
+  }]
+};
+
+// ----------------------------------------------------------------
+// Dummy historical points within the enclave — placeholder data
+// for layout/styling. Replace with real research findings.
+// ----------------------------------------------------------------
+const dummyPoints = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: {
+        name: 'The Cabin Inn',
+        kind: 'Bar / nightclub',
+        years: '1934–1940',
+        description: 'Placeholder description: a Black-owned cabaret that hosted female impersonators and drew mixed-race, mixed-orientation crowds during the late Bronzeville cabaret era.'
+      },
+      geometry: { type: 'Point', coordinates: [-87.6195, 41.8155] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        name: 'Mr. Henry\u2019s Annex',
+        kind: 'Social club',
+        years: 'c. 1948–1955',
+        description: 'Placeholder description: an after-hours club referenced in oral histories as a gathering space for Black gay men in the postwar period.'
+      },
+      geometry: { type: 'Point', coordinates: [-87.6125, 41.8138] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        name: 'Wabash Rooming House',
+        kind: 'Residence',
+        years: 'c. 1925–1942',
+        description: 'Placeholder description: a single-room-occupancy hotel that appears in multiple period accounts as housing single men working in the entertainment district.'
+      },
+      geometry: { type: 'Point', coordinates: [-87.6240, 41.8118] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        name: 'Finnie\u2019s Halloween Ball venue',
+        kind: 'Drag ball site',
+        years: '1935–1960s',
+        description: 'Placeholder description: rotating site of the Finnie\u2019s Ball, the city\u2019s largest Black drag ball, which moved among South Side venues.'
+      },
+      geometry: { type: 'Point', coordinates: [-87.6155, 41.8098] }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        name: 'State Street tavern',
+        kind: 'Bar / nightclub',
+        years: 'c. 1953–1967',
+        description: 'Placeholder description: tavern flagged in police vice reports as a known meeting place for gay patrons; closed during a citywide license crackdown.'
+      },
+      geometry: { type: 'Point', coordinates: [-87.6258, 41.8132] }
+    }
+  ]
+};
 
 // Violet → teal ramp. Bins use half-open intervals [min, max).
 const colorBins = [
@@ -349,8 +475,6 @@ function showStatus(msg, isError) {
   b.style.borderLeftColor = isError ? '#ef4444' : '#6366f1';
 }
 
-// Dark, minimal fallback basemap using Carto's positron-style raster rendering
-// when MapTiler is unavailable. Uses CARTO basemaps (free, no key needed for personal use).
 const FALLBACK_STYLE = {
   version: 8,
   glyphs: 'https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf',
@@ -456,7 +580,6 @@ async function chooseStyle() {
 
     map.addSource('boundaries', { type: 'geojson', data: BOUNDARIES_URL });
 
-    // Softer boundary: dark, not pure black, with slight transparency
     map.addLayer({
       id: 'boundaries-line',
       type: 'line',
@@ -485,7 +608,34 @@ async function chooseStyle() {
       filter: ['==', ['get', '__nothing__'], 'nothing']
     });
 
-    // Semi-transparent community area labels
+    // ----------------------------------------------------------------
+    // ENCLAVE LAYERS
+    // ----------------------------------------------------------------
+    map.addSource('enclave', { type: 'geojson', data: enclavePolygon });
+
+    map.addLayer({
+      id: 'enclave-fill',
+      type: 'fill',
+      source: 'enclave',
+      paint: {
+        'fill-color': '#ec4899',
+        'fill-opacity': 0.12
+      }
+    });
+
+    map.addLayer({
+      id: 'enclave-outline',
+      type: 'line',
+      source: 'enclave',
+      paint: {
+        'line-color': '#ec4899',
+        'line-width': 2.5,
+        'line-dasharray': [3, 2],
+        'line-opacity': 0.95
+      }
+    });
+
+    // Community labels go AFTER enclave so they sit on top
     map.addLayer({
       id: 'boundaries-labels',
       type: 'symbol',
@@ -525,9 +675,55 @@ async function chooseStyle() {
       }
     });
 
+    // ----------------------------------------------------------------
+    // POINT MARKERS (sit on top of everything)
+    // ----------------------------------------------------------------
+    map.addSource('points', { type: 'geojson', data: dummyPoints });
+
+    // Halo (white ring for legibility on any basemap)
+    map.addLayer({
+      id: 'points-halo',
+      type: 'circle',
+      source: 'points',
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 5,
+          14, 9,
+          16, 12
+        ],
+        'circle-color': '#ffffff',
+        'circle-opacity': 0.95,
+        'circle-stroke-width': 0
+      }
+    });
+
+    map.addLayer({
+      id: 'points-circle',
+      type: 'circle',
+      source: 'points',
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 3.5,
+          14, 6.5,
+          16, 9
+        ],
+        'circle-color': '#ec4899',
+        'circle-stroke-color': '#9d174d',
+        'circle-stroke-width': 1.2,
+        'circle-opacity': 1
+      }
+    });
+
     const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' });
 
+    // Tract popup (kept as before)
     map.on('click', 'tracts-fill', (e) => {
+      // If a point was clicked, let that handler win
+      const pointHits = map.queryRenderedFeatures(e.point, { layers: ['points-circle'] });
+      if (pointHits.length) return;
+
       if (!e.features.length) return;
       const f = e.features[0];
       const tractId = f.properties.NAME || f.properties.TRACTCE || 'Unknown';
@@ -544,12 +740,40 @@ async function chooseStyle() {
       `).addTo(map);
     });
 
+    // Point popup
+    map.on('click', 'points-circle', (e) => {
+      if (!e.features.length) return;
+      e.originalEvent.stopPropagation && e.originalEvent.stopPropagation();
+      const f = e.features[0];
+      const p = f.properties;
+      popup.setLngLat(f.geometry.coordinates).setHTML(`
+        <div class="popup-header enclave-header">${escapeHtml(p.kind || 'Site')}</div>
+        <div class="popup-body">
+          <div class="popup-name">${escapeHtml(p.name || '')}</div>
+          <div class="popup-meta">${escapeHtml(p.years || '')}</div>
+          <div class="popup-desc">${escapeHtml(p.description || '')}</div>
+        </div>
+      `).addTo(map);
+    });
+
     map.on('mouseenter', 'tracts-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'tracts-fill', () => { map.getCanvas().style.cursor = ''; });
+    map.on('mouseenter', 'points-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'points-circle', () => { map.getCanvas().style.cursor = ''; });
 
     buildLegend();
     setupSearch();
   });
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function buildLegend() {
     const legend = document.createElement('div');
@@ -584,6 +808,20 @@ async function chooseStyle() {
 
       legend.appendChild(row);
     });
+
+    // Historical overlay section
+    const hist = document.createElement('div');
+    hist.className = 'legend-section';
+    hist.innerHTML = `
+      <div class="legend-title">Historical Layer</div>
+      <div class="legend-row" style="cursor:default" tabindex="-1" aria-disabled="true">
+        <span class="swatch outline"></span>Study area (c. 1925–1965)
+      </div>
+      <div class="legend-row" style="cursor:default" tabindex="-1" aria-disabled="true">
+        <span class="swatch dot"></span>Documented site
+      </div>
+    `;
+    legend.appendChild(hist);
 
     document.getElementById('map').appendChild(legend);
   }
@@ -643,7 +881,7 @@ async function chooseStyle() {
             .setHTML(`
               <div class="popup-header">Community Area</div>
               <div class="popup-body">
-                <div class="popup-name">${match.name}</div>
+                <div class="popup-name">${escapeHtml(match.name)}</div>
               </div>
             `)
             .addTo(map);
